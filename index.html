@@ -492,13 +492,29 @@ function logout(){CU=null;sessionStorage.removeItem('gp_u');showScreen('login');
 
 // Fallback: if db-ready already fired, run directly
 window._dbReadyCallback = async function() {
+  if(window._dbInitDone) return;
+  window._dbInitDone = true;
+  clearInterval(_dbPoll);
+  // Show login immediately, load data in background
   document.getElementById('ls').style.display='none';
-  students=await window._db.loadStudents().catch(()=>({}));
-  const cfg=await window._db.loadCfg().catch(()=>({}));
-  if(cfg.adminPass)adminPass=cfg.adminPass;
-  const saved=sessionStorage.getItem('gp_u');
-  if(saved){CU=JSON.parse(saved);CU.isAdmin?enterAdmin():enterStudent();}
-  else showScreen('login');
+  showScreen('login');
+  // Load students and config in background
+  try {
+    students = await Promise.race([
+      window._db.loadStudents(),
+      new Promise((_,r) => setTimeout(() => r(new Error('timeout')), 5000))
+    ]);
+  } catch(e) { students = {}; }
+  try {
+    const cfg = await Promise.race([
+      window._db.loadCfg(),
+      new Promise((_,r) => setTimeout(() => r(new Error('timeout')), 5000))
+    ]);
+    if(cfg && cfg.adminPass) adminPass = cfg.adminPass;
+  } catch(e) {}
+  // Restore session if any
+  const saved = sessionStorage.getItem('gp_u');
+  if(saved){ CU=JSON.parse(saved); CU.isAdmin?enterAdmin():enterStudent(); }
 };
 document.addEventListener('db-ready', window._dbReadyCallback);
 // Extra fallback - poll every 500ms
@@ -509,6 +525,17 @@ var _dbPoll = setInterval(function(){
     window._dbReadyCallback();
   }
 }, 500);
+
+// NUCLEAR FALLBACK - show login after 2 seconds no matter what
+setTimeout(function(){
+  if(!window._dbInitDone){
+    window._dbInitDone = true;
+    clearInterval(_dbPoll);
+    document.getElementById('ls').style.display='none';
+    showScreen('login');
+    console.log('Fallback triggered - Firebase too slow');
+  }
+}, 2000);
 setTimeout(()=>{if(!window._dbReady)document.getElementById('ls').innerHTML='<div style="text-align:center;padding:40px;max-width:480px"><div style="font-size:44px;margin-bottom:12px">\u26a0\ufe0f</div><h2 style="font-weight:800;margin-bottom:10px">Firebase Not Configured</h2><p style="color:var(--muted);line-height:1.7">Open <strong>index.html</strong> and paste your Firebase config at the top. See <strong>SETUP.md</strong> for instructions.</p></div>';},8000);
 
 // LOGIN

@@ -1,0 +1,20 @@
+{
+  "name": "GATE Portal",
+  "short_name": "GATEPortal",
+  "description": "GATE Exam Practice Portal",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#07090f",
+  "theme_color": "#07090f",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%2307090f'/><text y='360' x='256' text-anchor='middle' font-size='280' font-family='monospace' fill='%2338bdf8' font-weight='bold'>G</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "lang": "en-IN"
+}

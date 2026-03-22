@@ -616,7 +616,8 @@ function showModal(title,msg,btns){
 function showScreen(s){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));document.getElementById(s).classList.add('on');}
 function logout(){
   if(CU&&!CU.isAdmin)window._db.clearActive(CU.uid).catch(()=>{});
-  window._db.offMsgs();chatInited=false;
+  try{window._db.offMsgs();}catch(e){}
+  chatInited=false;chatTab=false;
   CU=null;sessionStorage.removeItem('gp_u');showScreen('login');
 }
 function openAdminChat(){
@@ -959,7 +960,14 @@ function chgQType(id,type){
 function dupTest(code){
   window._db.loadTest(code).then(t=>{
     if(!t)return;
-    // Reset form fields manually (don't call initCreate which resets editQs)
+    // Step 1: deep copy questions FIRST before anything resets them
+    editQs=JSON.parse(JSON.stringify(t.questions)).map(q=>({...q,id:uid()}));
+    // Step 2: switch tabs but bypass initCreate by directly showing create panel
+    ['tests','create','results','students','live','groups','settings'].forEach(x=>{
+      document.getElementById('at-'+x).style.display=x==='create'?'block':'none';
+      document.getElementById('sl-'+x).classList.toggle('on',x==='create');
+    });
+    // Step 3: fill form fields
     ['ct-title','ct-instr','ct-start','ct-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('ct-dur').value=t.duration||180;
     document.getElementById('ct-total').value=t.totalMarks||100;
@@ -968,11 +976,9 @@ function dupTest(code){
     if(t.instructions)document.getElementById('ct-instr').value=t.instructions;
     populateGroupSelect();
     if(t.group)setTimeout(()=>{const sel=document.getElementById('ct-group');if(sel)sel.value=t.group;},100);
-    // Deep copy questions with new IDs
-    editQs=JSON.parse(JSON.stringify(t.questions)).map(q=>({...q,id:uid()}));
-    aTab('create');
+    // Step 4: render questions
     renderQB();
-    toast('Test duplicated! '+editQs.length+' questions copied. Edit and publish.');
+    toast('Duplicated! '+editQs.length+' questions copied.');
   });
 }
 function renderQB(){
@@ -1157,11 +1163,15 @@ async function enterStudent(){
 function stTab(t){
   ['tests','lb','an','prog','mine','chat'].forEach(x=>{
     const el=document.getElementById('stt-'+x+'-c');
-    if(el)el.style.display=x===t?(x==='chat'?'block':'block'):'none';
+    if(el)el.style.display=x===t?'block':'none';
     const tab=document.getElementById('stt-'+x);
     if(tab)tab.classList.toggle('on',x===t);
   });
-  if(t==='chat'){document.getElementById('chat-badge').style.display='none';document.getElementById('chat-badge').textContent='0';}
+  if(t==='chat'){
+    const b=document.getElementById('chat-badge');
+    if(b){b.style.display='none';b.textContent='0';}
+    unreadCount=0;
+  }
   document.getElementById('exam-screen').style.display='none';
   document.getElementById('result-screen').style.display='none';
   document.getElementById('st-instr').style.display='none';
@@ -1627,14 +1637,18 @@ function initChat(){
       msgs.forEach(m=>appendMsg(m,false));
       scrollChat();
     });
+    let lastMsgTs=Date.now();
     window._db.onNewMsg(msg=>{
-      // Skip if this is our own message being echoed back on first load
-      if(msg._justSent)return;
+      // Skip messages older than when we opened chat (avoids duplicate on load)
+      if(msg.ts<=lastMsgTs)return;
+      lastMsgTs=msg.ts;
+      // Skip own messages (already shown optimistically)
+      if(msg.uid===CU.uid)return;
       appendMsg(msg,true);
-      if(!chatTab){
+      if(!chatTab||document.getElementById('stt-chat-c').style.display==='none'){
         unreadCount++;
         const b=document.getElementById('chat-badge');
-        b.style.display='inline';b.textContent=unreadCount>99?'99+':unreadCount;
+        if(b){b.style.display='inline';b.textContent=unreadCount>99?'99+':unreadCount;}
       }
     });
   } else {
@@ -1748,4 +1762,4 @@ if('serviceWorker' in navigator){
 }
 </script>
 </body>
-      </html>
+            </html>

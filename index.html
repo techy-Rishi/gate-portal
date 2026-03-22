@@ -38,6 +38,10 @@ try{
     logActive:async(uid,name)=>db.ref('active/'+uid).set({uid,name,ts:Date.now()}),
     clearActive:async(uid)=>db.ref('active/'+uid).set(null),
     loadActive:async()=>{const s=await db.ref('active').get();return s.exists()?Object.values(s.val()):[];},
+    sendMsg:async(msg)=>db.ref('chat').push(msg),
+    loadMsgs:async()=>{const s=await db.ref('chat').limitToLast(100).get();return s.exists()?Object.values(s.val()):[];},
+    onNewMsg:(cb)=>db.ref('chat').limitToLast(1).on('child_added',snap=>{cb(snap.val());}),
+    offMsgs:()=>db.ref('chat').off(),
   };
   window._dbReady=true;
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',()=>document.dispatchEvent(new Event('db-ready')));}
@@ -1762,4 +1766,4 @@ if('serviceWorker' in navigator){
 }
 </script>
 </body>
-            </html>
+  </html>

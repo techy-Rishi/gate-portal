@@ -40,9 +40,12 @@ window.MathJax = {
       loadCfg:         async ()    => { const s = await db.ref('config').get(); return s.exists() ? s.val() : {}; },
     };
     window._dbReady = true;
-    document.addEventListener('DOMContentLoaded', function() {
-      document.dispatchEvent(new Event('db-ready'));
-    });
+    // Fire db-ready after DOM is definitely ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => document.dispatchEvent(new Event('db-ready')));
+    } else {
+      setTimeout(() => document.dispatchEvent(new Event('db-ready')), 100);
+    }
   } catch(e) {
     console.error('Firebase init error:', e);
     document.addEventListener('DOMContentLoaded', function() {
@@ -487,7 +490,8 @@ function closeModal(){document.getElementById('modal').classList.remove('open');
 function showScreen(s){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));document.getElementById(s).classList.add('on');}
 function logout(){CU=null;sessionStorage.removeItem('gp_u');showScreen('login');}
 
-document.addEventListener('db-ready',async()=>{
+// Fallback: if db-ready already fired, run directly
+window._dbReadyCallback = async function() {
   document.getElementById('ls').style.display='none';
   students=await window._db.loadStudents().catch(()=>({}));
   const cfg=await window._db.loadCfg().catch(()=>({}));
@@ -495,7 +499,16 @@ document.addEventListener('db-ready',async()=>{
   const saved=sessionStorage.getItem('gp_u');
   if(saved){CU=JSON.parse(saved);CU.isAdmin?enterAdmin():enterStudent();}
   else showScreen('login');
-});
+};
+document.addEventListener('db-ready', window._dbReadyCallback);
+// Extra fallback - poll every 500ms
+var _dbPoll = setInterval(function(){
+  if(window._dbReady && !window._dbInitDone){
+    window._dbInitDone = true;
+    clearInterval(_dbPoll);
+    window._dbReadyCallback();
+  }
+}, 500);
 setTimeout(()=>{if(!window._dbReady)document.getElementById('ls').innerHTML='<div style="text-align:center;padding:40px;max-width:480px"><div style="font-size:44px;margin-bottom:12px">\u26a0\ufe0f</div><h2 style="font-weight:800;margin-bottom:10px">Firebase Not Configured</h2><p style="color:var(--muted);line-height:1.7">Open <strong>index.html</strong> and paste your Firebase config at the top. See <strong>SETUP.md</strong> for instructions.</p></div>';},8000);
 
 // LOGIN

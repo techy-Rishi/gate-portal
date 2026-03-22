@@ -622,7 +622,7 @@ function logout(){
   if(CU&&!CU.isAdmin)window._db.clearActive(CU.uid).catch(()=>{});
   try{window._db.offMsgs();}catch(e){}
   chatInited=false;chatTab=false;
-  CU=null;sessionStorage.removeItem('gp_u');showScreen('login');
+  CU=null;localStorage.removeItem('gp_u');showScreen('login');
 }
 function openAdminChat(){
   // Admin views chat in a modal
@@ -675,7 +675,7 @@ window._dbReadyCallback=async function(){
   try{students=await Promise.race([window._db.loadStudents(),new Promise((_,r)=>setTimeout(()=>r(),4000))])||{};}catch(e){students={};}
   try{const cfg=await Promise.race([window._db.loadCfg(),new Promise((_,r)=>setTimeout(()=>r(),4000))]);if(cfg&&cfg.adminPass)adminPass=cfg.adminPass;}catch(e){}
   try{groups=await Promise.race([window._db.loadGroups(),new Promise((_,r)=>setTimeout(()=>r(),4000))])|| {};}catch(e){groups={};}
-  const saved=sessionStorage.getItem('gp_u');
+  const saved=localStorage.getItem('gp_u');
   if(saved){CU=JSON.parse(saved);CU.isAdmin?enterAdmin():enterStudent();}
 };
 document.addEventListener('db-ready',window._dbReadyCallback);
@@ -698,13 +698,13 @@ async function sLogin(){
   const st=students[u];
   if(!st||st.password!==p){toast('Invalid UID or password','err');return;}
   CU={uid:u,name:st.name,isAdmin:false};
-  sessionStorage.setItem('gp_u',JSON.stringify(CU));
+  localStorage.setItem('gp_u',JSON.stringify(CU));
   enterStudent();
 }
 async function aLogin(){
   if(document.getElementById('a-pass').value!==adminPass){toast('Wrong admin password','err');return;}
   CU={uid:'admin',name:'Admin',isAdmin:true};
-  sessionStorage.setItem('gp_u',JSON.stringify(CU));enterAdmin();
+  localStorage.setItem('gp_u',JSON.stringify(CU));enterAdmin();
 }
 
 // ── BADGES ──
